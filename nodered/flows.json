@@ -30,7 +30,7 @@
     {
         "id": "19b79c31.71fc04",
         "type": "tab",
-        "label": "Flow 1",
+        "label": "Tasmota Doorstatus",
         "disabled": false,
         "info": ""
     },
@@ -973,93 +973,6 @@
         "wires": []
     },
     {
-        "id": "4dcc4816.a08f28",
-        "type": "trigger",
-        "z": "19b79c31.71fc04",
-        "op1": "start",
-        "op2": "stop",
-        "op1type": "str",
-        "op2type": "str",
-        "duration": "40",
-        "extend": false,
-        "units": "s",
-        "reset": "",
-        "bytopic": "all",
-        "name": "",
-        "x": 330,
-        "y": 220,
-        "wires": [
-            [
-                "890113a5.4055c",
-                "67e1098c.361db8"
-            ]
-        ]
-    },
-    {
-        "id": "654f0325.7bec0c",
-        "type": "inject",
-        "z": "19b79c31.71fc04",
-        "name": "",
-        "topic": "",
-        "payload": "start",
-        "payloadType": "str",
-        "repeat": "",
-        "crontab": "",
-        "once": false,
-        "onceDelay": 0.1,
-        "x": 168.99991989135742,
-        "y": 221,
-        "wires": [
-            [
-                "4dcc4816.a08f28"
-            ]
-        ]
-    },
-    {
-        "id": "890113a5.4055c",
-        "type": "debug",
-        "z": "19b79c31.71fc04",
-        "name": "",
-        "active": true,
-        "tosidebar": true,
-        "console": false,
-        "tostatus": false,
-        "complete": "true",
-        "x": 588.9999771118164,
-        "y": 185,
-        "wires": []
-    },
-    {
-        "id": "67e1098c.361db8",
-        "type": "function",
-        "z": "19b79c31.71fc04",
-        "name": "Branch to display time remaining",
-        "func": "var counting = function () {\n  let counter = flow.get('counter');\n  counter += 1;\n  node.status({text:counter + \" seconds\"});\n  flow.set('counter',counter);\n   return counter;\n}\n\nif (msg.payload === \"start\") {\n    flow.set('counter',0);\n    node.status({text: \"Started..\"}); \n    let timer1 = setInterval(counting, 1000);\n    flow.set('timer1',timer1);\n} else if (msg.payload === \"stop\") {\n    node.status({}); // clear the status decoration\n    clearInterval(flow.get('timer1')); \n    \n}\n\nreturn msg;",
-        "outputs": 1,
-        "noerr": 0,
-        "x": 600.9999771118164,
-        "y": 276,
-        "wires": [
-            [
-                "76a8e735.bc6be8"
-            ]
-        ]
-    },
-    {
-        "id": "76a8e735.bc6be8",
-        "type": "debug",
-        "z": "19b79c31.71fc04",
-        "name": "",
-        "active": true,
-        "tosidebar": true,
-        "console": false,
-        "tostatus": false,
-        "complete": "true",
-        "x": 813.8999290466309,
-        "y": 275,
-        "wires": []
-    },
-    {
         "id": "774df6c2.0a7e88",
         "type": "inject",
         "z": "1db65893.9f8c27",
@@ -1179,6 +1092,236 @@
         "y": 180,
         "wires": [
             []
+        ]
+    },
+    {
+        "id": "260a7cb6.7f9734",
+        "type": "mqtt in",
+        "z": "19b79c31.71fc04",
+        "name": "Backdoor",
+        "topic": "env/stat/sonoff_755F13/POWER1",
+        "qos": "2",
+        "broker": "14e86b97.592304",
+        "x": 180,
+        "y": 160,
+        "wires": [
+            [
+                "98554668.7985a8",
+                "23c918eb.b08e68"
+            ]
+        ]
+    },
+    {
+        "id": "5b03abf.e696354",
+        "type": "mqtt in",
+        "z": "19b79c31.71fc04",
+        "name": "Frontdoor",
+        "topic": "env/stat/sonoff_755F13/POWER2",
+        "qos": "2",
+        "broker": "14e86b97.592304",
+        "x": 180,
+        "y": 220,
+        "wires": [
+            [
+                "98554668.7985a8",
+                "457609f6.bd3278"
+            ]
+        ]
+    },
+    {
+        "id": "98554668.7985a8",
+        "type": "debug",
+        "z": "19b79c31.71fc04",
+        "name": "",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "true",
+        "x": 390,
+        "y": 80,
+        "wires": []
+    },
+    {
+        "id": "93973f75.6fe08",
+        "type": "mqtt in",
+        "z": "19b79c31.71fc04",
+        "name": "Status",
+        "topic": "env/tele/sonoff_755F13/STATE",
+        "qos": "2",
+        "broker": "14e86b97.592304",
+        "x": 170,
+        "y": 320,
+        "wires": [
+            [
+                "98554668.7985a8",
+                "37c022b5.8850de"
+            ]
+        ]
+    },
+    {
+        "id": "457609f6.bd3278",
+        "type": "function",
+        "z": "19b79c31.71fc04",
+        "name": "influx_front",
+        "func": "var msgout, location, status;\n\nif (msg.payload.indexOf(\"OFF\") > -1) status = 0;\nif (msg.payload.indexOf(\"ON\") > -1) status = 1;\n\nmsgout = {payload: [{\n        \"value\": status\n    },\n    {\n        \"location\": \"garage_front\",\n    }]\n}; \n\n\nreturn msgout;",
+        "outputs": 1,
+        "noerr": 0,
+        "x": 410,
+        "y": 220,
+        "wires": [
+            [
+                "37bf379b.fe4bf8",
+                "2cec5313.1f8f8c"
+            ]
+        ]
+    },
+    {
+        "id": "37bf379b.fe4bf8",
+        "type": "influxdb out",
+        "z": "19b79c31.71fc04",
+        "influxdb": "5de16f02.256ca",
+        "name": "",
+        "measurement": "status",
+        "precision": "",
+        "retentionPolicy": "",
+        "x": 650,
+        "y": 160,
+        "wires": []
+    },
+    {
+        "id": "23c918eb.b08e68",
+        "type": "function",
+        "z": "19b79c31.71fc04",
+        "name": "influx_back",
+        "func": "var msgout, location, status;\n\nif (msg.payload.indexOf(\"OFF\") > -1) status = 0;\nif (msg.payload.indexOf(\"ON\") > -1) status = 1;\n\nmsgout = {payload: [{\n        \"value\": status\n    },\n    {\n        \"location\": \"garage_back\",\n    }]\n}; \n\n\nreturn msgout;",
+        "outputs": 1,
+        "noerr": 0,
+        "x": 410,
+        "y": 160,
+        "wires": [
+            [
+                "37bf379b.fe4bf8",
+                "2cec5313.1f8f8c"
+            ]
+        ]
+    },
+    {
+        "id": "2cec5313.1f8f8c",
+        "type": "debug",
+        "z": "19b79c31.71fc04",
+        "name": "",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "true",
+        "x": 570,
+        "y": 80,
+        "wires": []
+    },
+    {
+        "id": "37c022b5.8850de",
+        "type": "trigger",
+        "z": "19b79c31.71fc04",
+        "op1": "",
+        "op2": "trigger",
+        "op1type": "nul",
+        "op2type": "str",
+        "duration": "20",
+        "extend": true,
+        "units": "min",
+        "reset": "",
+        "bytopic": "all",
+        "name": "watchdogtrigger",
+        "x": 420,
+        "y": 320,
+        "wires": [
+            [
+                "3d36bd51.974652"
+            ]
+        ]
+    },
+    {
+        "id": "3d36bd51.974652",
+        "type": "function",
+        "z": "19b79c31.71fc04",
+        "name": "watchdog",
+        "func": "\nmsg = {payload: '{\"body\":\"No door status received for a while!\",\"title\":\"Door Status Fail\",\"type\":\"note\"}'};\nmsg.headers = {};\nmsg.headers['Content-Type'] = 'application/json';\nmsg.headers['Access-Token'] = 'o.Od8HFYCakNIZPTvPUByeiRl1sa43Tjs4';\n\nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "x": 600,
+        "y": 320,
+        "wires": [
+            [
+                "6b8ae751.4c4bc8",
+                "75c03212.06f3cc"
+            ]
+        ]
+    },
+    {
+        "id": "6b8ae751.4c4bc8",
+        "type": "http request",
+        "z": "19b79c31.71fc04",
+        "name": "pushbullet",
+        "method": "POST",
+        "ret": "txt",
+        "url": "https://api.pushbullet.com/v2/pushes",
+        "tls": "",
+        "x": 770,
+        "y": 320,
+        "wires": [
+            [
+                "e32122a4.58446"
+            ]
+        ]
+    },
+    {
+        "id": "e32122a4.58446",
+        "type": "debug",
+        "z": "19b79c31.71fc04",
+        "name": "pushbullet_debug",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "payload",
+        "x": 970,
+        "y": 320,
+        "wires": []
+    },
+    {
+        "id": "75c03212.06f3cc",
+        "type": "debug",
+        "z": "19b79c31.71fc04",
+        "name": "watchdog_debug",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "payload",
+        "x": 790,
+        "y": 380,
+        "wires": []
+    },
+    {
+        "id": "5a907252.57a6fc",
+        "type": "inject",
+        "z": "19b79c31.71fc04",
+        "name": "set trigger",
+        "topic": "",
+        "payload": "reset",
+        "payloadType": "str",
+        "repeat": "",
+        "crontab": "",
+        "once": true,
+        "onceDelay": 0.1,
+        "x": 190,
+        "y": 380,
+        "wires": [
+            [
+                "37c022b5.8850de"
+            ]
         ]
     }
 ]

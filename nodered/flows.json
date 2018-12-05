@@ -1155,7 +1155,8 @@
         "wires": [
             [
                 "98554668.7985a8",
-                "37c022b5.8850de"
+                "37c022b5.8850de",
+                "74cad884.fde788"
             ]
         ]
     },
@@ -1321,6 +1322,39 @@
         "wires": [
             [
                 "37c022b5.8850de"
+            ]
+        ]
+    },
+    {
+        "id": "39fcdf78.f3826",
+        "type": "function",
+        "z": "19b79c31.71fc04",
+        "name": "influx_status",
+        "func": "var msgout, location, status;\n\nif (msg.payload.POWER1.indexOf(\"OFF\") > -1) status = 0;\nif (msg.payload.POWER1.indexOf(\"ON\") > -1) status = 1;\n\nmsgout = {payload: [{\n        \"value\": status\n    },\n    {\n        \"location\": \"garage_back\",\n    }]\n}; \n\nnode.send(msgout);\n\nif (msg.payload.POWER2.indexOf(\"OFF\") > -1) status = 0;\nif (msg.payload.POWER2.indexOf(\"ON\") > -1) status = 1;\n\nmsgout = {payload: [{\n        \"value\": status\n    },\n    {\n        \"location\": \"garage_front\",\n    }]\n}; \n\n\n\nreturn msgout;",
+        "outputs": 1,
+        "noerr": 0,
+        "x": 530,
+        "y": 280,
+        "wires": [
+            [
+                "2cec5313.1f8f8c",
+                "37bf379b.fe4bf8"
+            ]
+        ]
+    },
+    {
+        "id": "74cad884.fde788",
+        "type": "json",
+        "z": "19b79c31.71fc04",
+        "name": "",
+        "property": "payload",
+        "action": "",
+        "pretty": false,
+        "x": 390,
+        "y": 280,
+        "wires": [
+            [
+                "39fcdf78.f3826"
             ]
         ]
     }

@@ -35,6 +35,13 @@
         "info": ""
     },
     {
+        "id": "c730f8f3.d5cf18",
+        "type": "tab",
+        "label": "Devicestatus",
+        "disabled": false,
+        "info": "The following parameters will be stored in the \"devicestatus\" influxdb:\n\n- Uptime\n- Vcc Voltage\n- Wifi.RSSI\n\nTags: Sensor in topic (e.g. sonoff_755F13)\n\nenv/tele/sonoff_755F13/STATE\n{\n    \"Time\":\"2018-12-17T22:22:49\",\n    \"Uptime\":\"1T08:57:40\",\n    \"Vcc\":3.061,\n    \"POWER1\":\"ON\",\n    \"POWER2\":\"ON\",\n    \"Wifi\":{\n        \"AP\":1,\n        \"SSId\":\"Buschfunk\",\n        \"BSSId\":\"00:0D:67:4D:8C:31\",\n        \"Channel\":11,\n        \"RSSI\":52}\n}"
+    },
+    {
         "id": "14e86b97.592304",
         "type": "mqtt-broker",
         "z": "",
@@ -64,7 +71,7 @@
         "port": "8086",
         "protocol": "http",
         "database": "doors",
-        "name": "",
+        "name": "doors",
         "usetls": false,
         "tls": ""
     },
@@ -99,6 +106,18 @@
         "caname": "ca.crt.pem",
         "servername": "cloudhost.local",
         "verifyservercert": false
+    },
+    {
+        "id": "bcaa018a.053ce",
+        "type": "influxdb",
+        "z": "",
+        "hostname": "192.168.2.5",
+        "port": "8086",
+        "protocol": "http",
+        "database": "devicestatus",
+        "name": "devicestatus",
+        "usetls": false,
+        "tls": "6c3a7900.476b08"
     },
     {
         "id": "6a9f9ca4.90e124",
@@ -837,7 +856,7 @@
         "type": "function",
         "z": "1db65893.9f8c27",
         "name": "Sensorsplit",
-        "func": "\n\nvar location, source, msgout;\n\n// Configure here where each Sensor is located and which Sensor module it uses\nstudio_mac = \"755A36\" //\nkeller_mac = \"B3BC39\" //84f3ebb3bc39\n\nif (msg.topic.indexOf(studio_mac) > -1 ){\n    location = \"Studio\"\n    source = \"BME280\"\n    mac = studio_mac\n}\n\nif (msg.topic.indexOf(keller_mac) > -1 ){\n    location = \"Keller\"\n    source = \"BME280\"\n    mac = keller_mac\n}\n\n//{\n//  \"Time\":\"2018-11-27T22:17:04\",\n//  \"BME280\":{\n//       \"Temperature\":23.7,\n//       \"Humidity\":31.2,\n//       \"Pressure\":1016.8\n//   },\n//   \"TempUnit\":\"C\"\n//}\n\n// split the payload into separate messages to pipe into influx\n\nmsgout = {payload: [{\n        \"value\": msg.payload.BME280.Temperature\n    },\n    {\n        \"location\": location,\n        \"source\": source,\n        \"mac\": mac,\n        \"unit\": \"C\"\n    }]}; \n\nnode.send ( [msgout, null, null, null]);\n\nmsgout.payload[0].value = msg.payload.BME280.Humidity\nmsgout.payload[1].unit = \"%\"\nnode.send ( [null, msgout, null, null]);\n\nmsgout.payload[0].value = msg.payload.BME280.Pressure\nmsgout.payload[1].unit = \"hPa\"\nnode.send ( [null, null, msgout, null]);\n\n//dewpoint calculation from http://www.meteo.psu.edu/~jyh10/classes/meteo473/java-tdew.htm\ntem2 = msg.payload.BME280.Temperature;\nr = msg.payload.BME280.Humidity;\ntem = -1.0*tem2;\nes = 6.112*Math.exp(-1.0*17.67*tem/(243.5 - tem));\ned = r/100.0*es;\neln = Math.log(ed/6.112);\ntd = -243.5*eln/(eln - 17.67 );\n// rounding from https://gordonlesti.com/inaccurate-rounding-with-decimal-digits/\ndewpoint = Math.round( Math.round( td * 1000 ) / 10 ) / 100;\n\nmsgout.payload[0].value = dewpoint\nmsgout.payload[1].unit = \"C\"\nnode.send ( [null, null, null, msgout]);\n",
+        "func": "\n\nvar location, source, msgout;\nvar temp_correction=0;\nvar temp = 0.0;\n\n// Configure here where each Sensor is located and which Sensor module it uses\nstudio_mac = \"755A36\" //\nkeller_mac = \"B3BC39\" //84f3ebb3bc39\n\nif (msg.topic.indexOf(studio_mac) > -1 ){\n    location = \"Studio\"\n    source = \"BME280\"\n    mac = studio_mac\n}\n\nif (msg.topic.indexOf(keller_mac) > -1 ){\n    location = \"Keller\"\n    source = \"BME280\"\n    mac = keller_mac\n    temp_correction=-4.0;\n}\n\ntemp = msg.payload.BME280.Temperature + temp_correction;\n\n//{\n//  \"Time\":\"2018-11-27T22:17:04\",\n//  \"BME280\":{\n//       \"Temperature\":23.7,\n//       \"Humidity\":31.2,\n//       \"Pressure\":1016.8\n//   },\n//   \"TempUnit\":\"C\"\n//}\n\n// split the payload into separate messages to pipe into influx\n\nmsgout = {payload: [{\n        \"value\": temp\n    },\n    {\n        \"location\": location,\n        \"source\": source,\n        \"mac\": mac,\n        \"unit\": \"C\"\n    }]}; \n\nnode.send ( [msgout, null, null, null]);\n\nmsgout.payload[0].value = msg.payload.BME280.Humidity\nmsgout.payload[1].unit = \"%\"\nnode.send ( [null, msgout, null, null]);\n\nmsgout.payload[0].value = msg.payload.BME280.Pressure\nmsgout.payload[1].unit = \"hPa\"\nnode.send ( [null, null, msgout, null]);\n\n//dewpoint calculation from http://www.meteo.psu.edu/~jyh10/classes/meteo473/java-tdew.htm\ntem2 = msg.payload.BME280.Temperature;\nr = msg.payload.BME280.Humidity;\ntem = -1.0*tem2;\nes = 6.112*Math.exp(-1.0*17.67*tem/(243.5 - tem));\ned = r/100.0*es;\neln = Math.log(ed/6.112);\ntd = -243.5*eln/(eln - 17.67 );\n// rounding from https://gordonlesti.com/inaccurate-rounding-with-decimal-digits/\ndewpoint = Math.round( Math.round( td * 1000 ) / 10 ) / 100;\n\nmsgout.payload[0].value = dewpoint\nmsgout.payload[1].unit = \"C\"\nnode.send ( [null, null, null, msgout]);\n",
         "outputs": 4,
         "noerr": 0,
         "x": 470,
@@ -1173,7 +1192,8 @@
         "wires": [
             [
                 "37bf379b.fe4bf8",
-                "2cec5313.1f8f8c"
+                "2cec5313.1f8f8c",
+                "5575ab50.c2a8b4"
             ]
         ]
     },
@@ -1186,7 +1206,7 @@
         "measurement": "status",
         "precision": "",
         "retentionPolicy": "",
-        "x": 650,
+        "x": 630,
         "y": 160,
         "wires": []
     },
@@ -1203,7 +1223,8 @@
         "wires": [
             [
                 "37bf379b.fe4bf8",
-                "2cec5313.1f8f8c"
+                "2cec5313.1f8f8c",
+                "5575ab50.c2a8b4"
             ]
         ]
     },
@@ -1301,8 +1322,8 @@
         "console": false,
         "tostatus": false,
         "complete": "payload",
-        "x": 790,
-        "y": 380,
+        "x": 970,
+        "y": 260,
         "wires": []
     },
     {
@@ -1330,7 +1351,7 @@
         "type": "function",
         "z": "19b79c31.71fc04",
         "name": "influx_status",
-        "func": "var msgout, location, status;\n\nif (msg.payload.POWER1.indexOf(\"OFF\") > -1) status = 0;\nif (msg.payload.POWER1.indexOf(\"ON\") > -1) status = 1;\n\nmsgout = {payload: [{\n        \"value\": status\n    },\n    {\n        \"location\": \"garage_back\",\n    }]\n}; \n\nnode.send(msgout);\n\nif (msg.payload.POWER2.indexOf(\"OFF\") > -1) status = 0;\nif (msg.payload.POWER2.indexOf(\"ON\") > -1) status = 1;\n\nmsgout = {payload: [{\n        \"value\": status\n    },\n    {\n        \"location\": \"garage_front\",\n    }]\n}; \n\n\n\nreturn msgout;",
+        "func": "var msgout, location, status;\n\n// status=0 means OPEN\nif (msg.payload.POWER1.indexOf(\"OFF\") > -1) status = 0;\n// status=1 means CLOSED\nif (msg.payload.POWER1.indexOf(\"ON\") > -1) status = 1;\n\nmsgout = {payload: [{\n        \"value\": status\n    },\n    {\n        \"location\": \"garage_back\",\n    }]\n}; \n\nnode.send(msgout);\n\nif (msg.payload.POWER2.indexOf(\"OFF\") > -1) status = 0;\nif (msg.payload.POWER2.indexOf(\"ON\") > -1) status = 1;\n\nmsgout = {payload: [{\n        \"value\": status\n    },\n    {\n        \"location\": \"garage_front\",\n    }]\n}; \n\n\n\nreturn msgout;",
         "outputs": 1,
         "noerr": 0,
         "x": 530,
@@ -1338,7 +1359,8 @@
         "wires": [
             [
                 "2cec5313.1f8f8c",
-                "37bf379b.fe4bf8"
+                "37bf379b.fe4bf8",
+                "5575ab50.c2a8b4"
             ]
         ]
     },
@@ -1355,6 +1377,131 @@
         "wires": [
             [
                 "39fcdf78.f3826"
+            ]
+        ]
+    },
+    {
+        "id": "5575ab50.c2a8b4",
+        "type": "function",
+        "z": "19b79c31.71fc04",
+        "name": "pushbulletmsg",
+        "func": "var msgout = {};\nvar date, ToD;\nvar msg_intervall = 1800000 //30 min\ndate = new Date();\nToD = date.getHours();\n\n//value 1 means door closed\nif (msg.payload[0].value == 1) return null;\n\n//when was the last warning message sent\nvar last_garagedoor_sent=flow.get('last_garagedoor_sent') || 0;\nvar last_backdoor_sent=flow.get('last_backdoor_sent') || 0;\n\nmsgout.headers = {};\nmsgout.headers['Content-Type'] = 'application/json';\nmsgout.headers['Access-Token'] = 'o.fFQGFv7AOZcDGIvrvukiaWMMxIV9fKxc';\n\n//only send messages at night\nif ((ToD > 5) && (ToD < 20)) return null;\nnode.warn (\"Time of Day: \" + ToD + \", sending message\");\n\n// only if last message was sent more than msg_interval (e.g. 30) mins before,\n// update the corresponding values in the flow\n// and actually send message\nif (msg.payload[1].location.indexOf(\"garage_front\") > -1){\n    var diff = Date.now() - last_garagedoor_sent;\n    if (diff < msg_intervall) return null;\n    msgout.payload = '{\"body\":\"Das Garagentor steht offen!\",\"title\":\"Türalarm\",\"type\":\"note\"}';\n    flow.set('last_garagedoor_sent', Date.now());\n}\n\nif (msg.payload[1].location.indexOf(\"garage_back\") > -1){\n    msgout.payload= '{\"body\":\"Die Garagentür steht offen!\",\"title\":\"Türalarm\",\"type\":\"note\"}';\n    var diff = Date.now() - last_backdoor_sent;\n//    if (diff < msg_intervall) return null;\n    flow.set('last_backdoor_sent',Date.now());\n}\n\n\nreturn msgout;",
+        "outputs": 1,
+        "noerr": 0,
+        "x": 780,
+        "y": 220,
+        "wires": [
+            [
+                "6b8ae751.4c4bc8",
+                "75c03212.06f3cc"
+            ]
+        ]
+    },
+    {
+        "id": "45aff7f6.cad178",
+        "type": "mqtt in",
+        "z": "c730f8f3.d5cf18",
+        "name": "env_state",
+        "topic": "env/tele/+/STATE",
+        "qos": "2",
+        "broker": "14e86b97.592304",
+        "x": 230,
+        "y": 220,
+        "wires": [
+            [
+                "4d2092ff.0307ac",
+                "85be123f.111f1"
+            ]
+        ]
+    },
+    {
+        "id": "f1e2c0.1a723d4",
+        "type": "mqtt in",
+        "z": "c730f8f3.d5cf18",
+        "name": "socket_state",
+        "topic": "tele/+/STATE",
+        "qos": "2",
+        "broker": "14e86b97.592304",
+        "x": 240,
+        "y": 280,
+        "wires": [
+            [
+                "4d2092ff.0307ac",
+                "85be123f.111f1"
+            ]
+        ]
+    },
+    {
+        "id": "d59f5ffa.63e5b",
+        "type": "debug",
+        "z": "c730f8f3.d5cf18",
+        "name": "",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "false",
+        "x": 540,
+        "y": 260,
+        "wires": []
+    },
+    {
+        "id": "4d2092ff.0307ac",
+        "type": "json",
+        "z": "c730f8f3.d5cf18",
+        "name": "",
+        "property": "payload",
+        "action": "",
+        "pretty": false,
+        "x": 390,
+        "y": 260,
+        "wires": [
+            [
+                "d59f5ffa.63e5b"
+            ]
+        ]
+    },
+    {
+        "id": "bcbb5637.4cf2c8",
+        "type": "influxdb out",
+        "z": "c730f8f3.d5cf18",
+        "influxdb": "bcaa018a.053ce",
+        "name": "devicestatus",
+        "measurement": "",
+        "precision": "",
+        "retentionPolicy": "",
+        "x": 590,
+        "y": 320,
+        "wires": []
+    },
+    {
+        "id": "3e252da.173b6d2",
+        "type": "debug",
+        "z": "c730f8f3.d5cf18",
+        "name": "",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "true",
+        "x": 560,
+        "y": 380,
+        "wires": []
+    },
+    {
+        "id": "85be123f.111f1",
+        "type": "function",
+        "z": "c730f8f3.d5cf18",
+        "name": "uptime",
+        "func": "//node.warn(msg);\n\nmsg_json= JSON.parse(msg.payload);\n//node.warn(msg_json);\n\nmsgout = {};\n\n\nvar topicarr = msg.topic.split('/');\nvar sensor = \"\";\nvar uptime = 0;\nvar vcc = msg_json.Vcc;\nvar rssi = msg_json.Wifi.RSSI;\n\n\ntopicarr.forEach(function(element){\n   if (element.indexOf('sonoff') > -1) {\n       sensor=element;\n   }\n});\n\n//convert uptime into seconds\n\nuptimearr = msg_json.Uptime.split('T');\nuptime_d = uptimearr[0]*24*3600;\nuptime_h = uptimearr[1].split(':')[0]*3600;\nuptime_m = uptimearr[1].split(':')[1]*60;\nuptime = uptime_d+uptime_h+uptime_m+uptimearr[1].split(':')[2];\n\n\nmsgout = {payload: [{\n        \"value\": uptime\n    },\n    {\n        \"sensor\": sensor,\n    }]\n}; \nmsgout.measurement = \"uptime\"\nnode.send(msgout);\n\nmsgout.measurement = \"vcc\";\nmsgout.payload[0].value=vcc;\nnode.send(msgout);\n\nmsgout.measurement = \"rssi\";\nmsgout.payload[0].value=rssi;\n\n\nreturn msgout;",
+        "outputs": 1,
+        "noerr": 0,
+        "x": 400,
+        "y": 520,
+        "wires": [
+            [
+                "3e252da.173b6d2",
+                "bcbb5637.4cf2c8"
             ]
         ]
     }

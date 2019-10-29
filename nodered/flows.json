@@ -3,7 +3,7 @@
         "id": "e4a05f0d.4915a",
         "type": "tab",
         "label": "Doorstatus",
-        "disabled": false,
+        "disabled": true,
         "info": ""
     },
     {
@@ -11,7 +11,7 @@
         "type": "tab",
         "label": "METAR",
         "disabled": false,
-        "info": ""
+        "info": "Sets global var METAR_dew to current dewpoint"
     },
     {
         "id": "b904d58d.d31878",
@@ -40,6 +40,13 @@
         "label": "Devicestatus",
         "disabled": false,
         "info": "The following parameters will be stored in the \"devicestatus\" influxdb:\n\n- Uptime\n- Vcc Voltage\n- Wifi.RSSI\n\nTags: Sensor in topic (e.g. sonoff_755F13)\n\nenv/tele/sonoff_755F13/STATE\n{\n    \"Time\":\"2018-12-17T22:22:49\",\n    \"Uptime\":\"1T08:57:40\",\n    \"Vcc\":3.061,\n    \"POWER1\":\"ON\",\n    \"POWER2\":\"ON\",\n    \"Wifi\":{\n        \"AP\":1,\n        \"SSId\":\"Buschfunk\",\n        \"BSSId\":\"00:0D:67:4D:8C:31\",\n        \"Channel\":11,\n        \"RSSI\":52}\n}"
+    },
+    {
+        "id": "669dd5db.17cc1c",
+        "type": "tab",
+        "label": "Flow 1",
+        "disabled": false,
+        "info": ""
     },
     {
         "id": "14e86b97.592304",
@@ -120,6 +127,57 @@
         "tls": "6c3a7900.476b08"
     },
     {
+        "id": "ac5a64ca.d04838",
+        "type": "tls-config",
+        "z": "",
+        "name": "mqtt.bosch-iot-hub.com",
+        "cert": "",
+        "key": "",
+        "ca": "",
+        "certname": "",
+        "keyname": "",
+        "caname": "",
+        "servername": "",
+        "verifyservercert": false
+    },
+    {
+        "id": "4fdefebd.4598c",
+        "type": "mqtt-broker",
+        "z": "",
+        "name": "mqtt.bosch-iot-hub.com",
+        "broker": "mqtt.bosch-iot-hub.com",
+        "port": "8883",
+        "tls": "4a43d0e5.df111",
+        "clientid": "com.bosch_si.alf5koe:my-device-id-4712",
+        "usetls": true,
+        "compatmode": false,
+        "keepalive": "60",
+        "cleansession": true,
+        "birthTopic": "",
+        "birthQos": "0",
+        "birthPayload": "",
+        "closeTopic": "",
+        "closeQos": "0",
+        "closePayload": "",
+        "willTopic": "",
+        "willQos": "0",
+        "willPayload": ""
+    },
+    {
+        "id": "4a43d0e5.df111",
+        "type": "tls-config",
+        "z": "",
+        "name": "IoT Hub",
+        "cert": "",
+        "key": "",
+        "ca": "",
+        "certname": "",
+        "keyname": "",
+        "caname": "iothub.crt",
+        "servername": "",
+        "verifyservercert": false
+    },
+    {
         "id": "6a9f9ca4.90e124",
         "type": "http request",
         "z": "2f0582b8.de5d5e",
@@ -185,7 +243,7 @@
         "type": "function",
         "z": "2f0582b8.de5d5e",
         "name": "Parse METAR",
-        "func": "var METARdata = msg.payload.response.data[0].METAR[0];\nvar wind = METARdata.wind_speed_kt[0];\nvar gusts = wind; //if wind_gust_kt is not present, value defaults to wind_speed_kt\n   if (typeof METARdata.wind_gust_kt != \"undefined\") {\n\t   gusts = METARdata.wind_gust_kt[0];\n       }\nvar altim = METARdata.altim_in_hg[0];\nvar pressure = Math.round(altim * 33.8637526); //convert hg to mb\nvar dew = parseFloat(METARdata.dewpoint_c[0]);\nvar temp = parseFloat(METARdata.temp_c[0]);\n\n//August-Roche-Magnus approximation to calculate humidity\nvar constA = 17.625;\nvar constB = 243.04;\nvar rh_numer = 100.0*Math.exp((constA*eval(dew))/(eval(dew)+constB));\nvar rh_denom = Math.exp((constA*eval(temp))/(eval(temp)+constB));\nvar rh_hum   = (rh_numer/rh_denom);\nvar humidity = Math.round(rh_hum);\n\n//msg.payload = ((wind) + (\",\") + (gusts) + (\",\") + (humidity) + (\",\") + (pressure) + (\",\") + (temp));\n\n\nvar msgtemp, msgdewpt, msgrelhum, msgbaro;\nmsgtemp = {payload : [{\n    \"value\" : temp\n},\n{\n    \"location\" : \"EDDL\",\n    \"unit\" : \"Celsius\",\n    \"source\" : \"METAR\"\n}]\n//measurement : {\n//    \"name\": \"temp\"\n//}\n};\n\n/////////////////////////////\nmsgdewpt = {payload : [{\n    \"value\" : dew\n},\n{\n    \"location\" : \"EDDL\",\n    \"unit\" : \"Celsius\",\n    \"source\" : \"METAR\"\n}]};\n//msgdewpt.measurement = {\n//    \"name\": \"dewPt\"\n//}\n/////////////////////////////\n\nmsgrelhum= {payload : [{\n    \"value\" : humidity\n},\n{\n    \"location\" : \"EDDL\",\n    \"unit\" : \"%\",\n    \"source\" : \"METAR\"\n}]};\n\n/////////////////////////////\nmsgbaro = {payload : [{\n    \"value\" : pressure\n},\n{\n    \"location\" : \"EDDL\",\n    \"unit\" : \"hPa\",\n    \"source\" : \"METAR\"\n}]};\n\nreturn [ msgtemp, msgdewpt, msgrelhum, msgbaro ];",
+        "func": "var METARdata = msg.payload.response.data[0].METAR[0];\nvar wind = METARdata.wind_speed_kt[0];\nvar gusts = wind; //if wind_gust_kt is not present, value defaults to wind_speed_kt\n   if (typeof METARdata.wind_gust_kt != \"undefined\") {\n\t   gusts = METARdata.wind_gust_kt[0];\n       }\nvar altim = METARdata.altim_in_hg[0];\nvar pressure = Math.round(altim * 33.8637526); //convert hg to mb\nvar dew = parseFloat(METARdata.dewpoint_c[0]);\nvar temp = parseFloat(METARdata.temp_c[0]);\n\nglobal.set('METAR_dew',dew);\n\n//August-Roche-Magnus approximation to calculate humidity\nvar constA = 17.625;\nvar constB = 243.04;\nvar rh_numer = 100.0*Math.exp((constA*eval(dew))/(eval(dew)+constB));\nvar rh_denom = Math.exp((constA*eval(temp))/(eval(temp)+constB));\nvar rh_hum   = (rh_numer/rh_denom);\nvar humidity = Math.round(rh_hum);\n\n//msg.payload = ((wind) + (\",\") + (gusts) + (\",\") + (humidity) + (\",\") + (pressure) + (\",\") + (temp));\n\n\nvar msgtemp, msgdewpt, msgrelhum, msgbaro;\nmsgtemp = {payload : [{\n    \"value\" : temp\n},\n{\n    \"location\" : \"EDDL\",\n    \"unit\" : \"Celsius\",\n    \"source\" : \"METAR\"\n}]\n//measurement : {\n//    \"name\": \"temp\"\n//}\n};\n\n/////////////////////////////\nmsgdewpt = {payload : [{\n    \"value\" : dew\n},\n{\n    \"location\" : \"EDDL\",\n    \"unit\" : \"Celsius\",\n    \"source\" : \"METAR\"\n}]};\n//msgdewpt.measurement = {\n//    \"name\": \"dewPt\"\n//}\n/////////////////////////////\n\nmsgrelhum= {payload : [{\n    \"value\" : humidity\n},\n{\n    \"location\" : \"EDDL\",\n    \"unit\" : \"%\",\n    \"source\" : \"METAR\"\n}]};\n\n/////////////////////////////\nmsgbaro = {payload : [{\n    \"value\" : pressure\n},\n{\n    \"location\" : \"EDDL\",\n    \"unit\" : \"hPa\",\n    \"source\" : \"METAR\"\n}]};\n\nreturn [ msgtemp, msgdewpt, msgrelhum, msgbaro ];",
         "outputs": "4",
         "noerr": 0,
         "x": 551,
@@ -558,7 +616,7 @@
         "type": "debug",
         "z": "e4a05f0d.4915a",
         "name": "",
-        "active": false,
+        "active": true,
         "console": "false",
         "complete": "false",
         "x": 399.13282775878906,
@@ -638,7 +696,7 @@
         "type": "function",
         "z": "e4a05f0d.4915a",
         "name": "watchdog",
-        "func": "\nmsg = {payload: '{\"body\":\"No door status received for a while!\",\"title\":\"Door Status Fail\",\"type\":\"note\"}'};\nmsg.headers = {};\nmsg.headers['Content-Type'] = 'application/json';\nmsg.headers['Access-Token'] = 'o.Od8HFYCakNIZPTvPUByeiRl1sa43Tjs4';\n\nreturn msg;",
+        "func": "var last_garagedoor_rcvd=flow.get('last_garagedoor_rcvd') || 0;\nmsg = {payload: '{\"body\":\"Last door status received at \"+last_garagedoor_rcvd+\"!\",\"title\":\"Door Status Fail\",\"type\":\"note\"}'};\nmsg.headers = {};\nmsg.headers['Content-Type'] = 'application/json';\nmsg.headers['Access-Token'] = 'o.Od8HFYCakNIZPTvPUByeiRl1sa43Tjs4';\n\nreturn msg;",
         "outputs": 1,
         "noerr": 0,
         "x": 661.1367225646973,
@@ -846,8 +904,7 @@
         "wires": [
             [
                 "46185743.aa94c8",
-                "9377767a.77d038",
-                "8798e26a.83a3a"
+                "9377767a.77d038"
             ]
         ]
     },
@@ -856,7 +913,7 @@
         "type": "function",
         "z": "1db65893.9f8c27",
         "name": "Sensorsplit",
-        "func": "\n\nvar location, source, msgout;\nvar temp_correction=0;\nvar temp = 0.0;\n\n// Configure here where each Sensor is located and which Sensor module it uses\nstudio_mac = \"755A36\" //\nkeller_mac = \"B3BC39\" //84f3ebb3bc39\n\nif (msg.topic.indexOf(studio_mac) > -1 ){\n    location = \"Studio\"\n    source = \"BME280\"\n    mac = studio_mac\n}\n\nif (msg.topic.indexOf(keller_mac) > -1 ){\n    location = \"Keller\"\n    source = \"BME280\"\n    mac = keller_mac\n    temp_correction=-4.0;\n}\n\ntemp = msg.payload.BME280.Temperature + temp_correction;\n\n//{\n//  \"Time\":\"2018-11-27T22:17:04\",\n//  \"BME280\":{\n//       \"Temperature\":23.7,\n//       \"Humidity\":31.2,\n//       \"Pressure\":1016.8\n//   },\n//   \"TempUnit\":\"C\"\n//}\n\n// split the payload into separate messages to pipe into influx\n\nmsgout = {payload: [{\n        \"value\": temp\n    },\n    {\n        \"location\": location,\n        \"source\": source,\n        \"mac\": mac,\n        \"unit\": \"C\"\n    }]}; \n\nnode.send ( [msgout, null, null, null]);\n\nmsgout.payload[0].value = msg.payload.BME280.Humidity\nmsgout.payload[1].unit = \"%\"\nnode.send ( [null, msgout, null, null]);\n\nmsgout.payload[0].value = msg.payload.BME280.Pressure\nmsgout.payload[1].unit = \"hPa\"\nnode.send ( [null, null, msgout, null]);\n\n//dewpoint calculation from http://www.meteo.psu.edu/~jyh10/classes/meteo473/java-tdew.htm\ntem2 = msg.payload.BME280.Temperature;\nr = msg.payload.BME280.Humidity;\ntem = -1.0*tem2;\nes = 6.112*Math.exp(-1.0*17.67*tem/(243.5 - tem));\ned = r/100.0*es;\neln = Math.log(ed/6.112);\ntd = -243.5*eln/(eln - 17.67 );\n// rounding from https://gordonlesti.com/inaccurate-rounding-with-decimal-digits/\ndewpoint = Math.round( Math.round( td * 1000 ) / 10 ) / 100;\n\nmsgout.payload[0].value = dewpoint\nmsgout.payload[1].unit = \"C\"\nnode.send ( [null, null, null, msgout]);\n",
+        "func": "\n\n\nvar location, source, msgout;\nvar temp_correction=0;\nvar temp = 0.0;\n\n// Configure here where each Sensor is located and which Sensor module it uses\nstudio_mac = \"755A36\" //\nkeller_mac = \"B3BC39\" //84f3ebb3bc39\n\nif (msg.topic.indexOf(studio_mac) > -1 ){\n    location = \"Studio\"\n    source = \"BME280\"\n    mac = studio_mac\n}\nelse if (msg.topic.indexOf(keller_mac) > -1 ){\n    location = \"Keller\"\n    source = \"BME280\"\n    mac = keller_mac\n    temp_correction=-4.0;\n}\nelse\n  return\n\nflow.set('lastmessage', Date.now())\n\ntemp = msg.payload.BME280.Temperature + temp_correction;\n\n//{\n//  \"Time\":\"2018-11-27T22:17:04\",\n//  \"BME280\":{\n//       \"Temperature\":23.7,\n//       \"Humidity\":31.2,\n//       \"Pressure\":1016.8\n//   },\n//   \"TempUnit\":\"C\"\n//}\n\n// split the payload into separate messages to pipe into influx\n\nmsgout = {payload: [{\n        \"value\": temp\n    },\n    {\n        \"location\": location,\n        \"source\": source,\n        \"mac\": mac,\n        \"unit\": \"C\"\n    }]}; \n\nnode.send ( [msgout, null, null, null]);\n\nmsgout.payload[0].value = msg.payload.BME280.Humidity\nmsgout.payload[1].unit = \"%\"\nnode.send ( [null, msgout, null, null]);\n\nmsgout.payload[0].value = msg.payload.BME280.Pressure\nmsgout.payload[1].unit = \"hPa\"\nnode.send ( [null, null, msgout, null]);\n\n//dewpoint calculation from http://www.meteo.psu.edu/~jyh10/classes/meteo473/java-tdew.htm\ntem2 = msg.payload.BME280.Temperature;\nr = msg.payload.BME280.Humidity;\ntem = -1.0*tem2;\nes = 6.112*Math.exp(-1.0*17.67*tem/(243.5 - tem));\ned = r/100.0*es;\neln = Math.log(ed/6.112);\ntd = -243.5*eln/(eln - 17.67 );\n// rounding from https://gordonlesti.com/inaccurate-rounding-with-decimal-digits/\ndewpoint = Math.round( Math.round( td * 1000 ) / 10 ) / 100;\n\nmsgout.payload[0].value = dewpoint\nmsgout.payload[1].unit = \"C\"\nnode.send ( [null, null, null, msgout]);\n",
         "outputs": 4,
         "noerr": 0,
         "x": 470,
@@ -876,7 +933,9 @@
             ],
             [
                 "4c320595.5d2d1c",
-                "ce3b4296.25acc"
+                "ce3b4296.25acc",
+                "c7b20f5e.d4334",
+                "8798e26a.83a3a"
             ]
         ]
     },
@@ -1016,9 +1075,9 @@
         "type": "trigger",
         "z": "1db65893.9f8c27",
         "op1": "",
-        "op2": "trigger",
+        "op2": "",
         "op1type": "date",
-        "op2type": "str",
+        "op2type": "date",
         "duration": "20",
         "extend": true,
         "units": "min",
@@ -1038,7 +1097,7 @@
         "type": "function",
         "z": "1db65893.9f8c27",
         "name": "watchdog",
-        "func": "\n\nnode.status({text: \"Started..\"+msg.payload}); \nif (msg.payload === \"trigger\") {\n    node.status({text:\"Triggered\"}); // clear the status decoration\n    msg.payload = '{\"body\":\"No temperature updates received for a while!\",\"title\":\"Environment Status Fail\",\"type\":\"note\"}';\n    msg.headers = {};\n    msg.headers['Content-Type'] = 'application/json';\n    msg.headers['Access-Token'] = 'o.Od8HFYCakNIZPTvPUByeiRl1sa43Tjs4';\n\n    return msg;\n}\n\n\n",
+        "func": "\n//flow.lastmessage set by Sensorsplit\nvar lastmessage = flow.get('lastmessage')||0;\nvar duration = Date.now() - lastmessage\nnode.warn (\"watchdog duration: \"+duration);\n\nnode.status({text: \"Last reset..\"+msg.payload + \". After \" +duration+\"ms of happiness.\"}); \n\nif (duration < 1200000)\n  return\n  \nvar msgout = {};\n//msg.payload = '{\"body\":\"No temperature updates received for a while!\",\"title\":\"Environment Status Fail\",\"type\":\"note\"}';\nmsgout.payload = {};\nmsgout.payload.body = \"No temperature updates received for \"+duration+\"ms!\"\nmsgout.payload.title = \"Environment Status Fail\"\nmsgout.payload.type = \"note\"\nmsgout.headers = {};\nmsgout.headers['Content-Type'] = 'application/json';\nmsgout.headers['Access-Token'] = 'o.Od8HFYCakNIZPTvPUByeiRl1sa43Tjs4';\nmsgout.reset = \"1\"\nreturn msgout;\n\n\n\n",
         "outputs": 1,
         "noerr": 0,
         "x": 520,
@@ -1059,8 +1118,8 @@
         "ret": "txt",
         "url": "https://api.pushbullet.com/v2/pushes",
         "tls": "",
-        "x": 810.13671875,
-        "y": 420.1289005279541,
+        "x": 990,
+        "y": 180,
         "wires": [
             [
                 "65d9aef3.88882"
@@ -1076,7 +1135,7 @@
         "tosidebar": true,
         "console": false,
         "tostatus": false,
-        "complete": "payload",
+        "complete": "true",
         "x": 890.140625,
         "y": 603.94921875,
         "wires": []
@@ -1091,8 +1150,8 @@
         "console": false,
         "tostatus": false,
         "complete": "payload",
-        "x": 1016.1484527587891,
-        "y": 416.93359756469727,
+        "x": 1190,
+        "y": 180,
         "wires": []
     },
     {
@@ -1269,7 +1328,7 @@
         "type": "function",
         "z": "19b79c31.71fc04",
         "name": "watchdog",
-        "func": "\nmsg = {payload: '{\"body\":\"No door status received for a while!\",\"title\":\"Door Status Fail\",\"type\":\"note\"}'};\nmsg.headers = {};\nmsg.headers['Content-Type'] = 'application/json';\nmsg.headers['Access-Token'] = 'o.Od8HFYCakNIZPTvPUByeiRl1sa43Tjs4';\n\nreturn msg;",
+        "func": "//flow.lastmessage set by pushbulletmessage\nvar lastmessage = flow.get('lastmessage')||0;\nvar duration = Date.now() - lastmessage\nnode.warn (\"watchdog duration: \"+duration);\n\nnode.status({text: \"Last reset..\"+msg.payload + \". After \" +duration+\"ms of happiness.\"}); \n\nif (duration < 1200000)\n  return\n  \nvar msgout = {};\n//msg.payload = '{\"body\":\"No temperature updates received for a while!\",\"title\":\"Environment Status Fail\",\"type\":\"note\"}';\nmsgout.payload = {};\nmsgout.payload.body = \"No door status received for \"+duration+\"ms!\"\nmsgout.payload.title = \"Door Status Fail\"\nmsgout.payload.type = \"note\"\nmsgout.headers = {};\nmsgout.headers['Content-Type'] = 'application/json';\nmsgout.headers['Access-Token'] = 'o.Od8HFYCakNIZPTvPUByeiRl1sa43Tjs4';\nmsgout.reset = \"1\"\nreturn msgout;\n\n\n//msg = {payload: '{\"body\":\"No door status received for a while!\",\"title\":\"Door Status Fail\",\"type\":\"note\"}'};\n//msg.headers = {};\n//msg.headers['Content-Type'] = 'application/json';\n//msg.headers['Access-Token'] = 'o.Od8HFYCakNIZPTvPUByeiRl1sa43Tjs4';\n\n//return msg;",
         "outputs": 1,
         "noerr": 0,
         "x": 600,
@@ -1277,7 +1336,8 @@
         "wires": [
             [
                 "6b8ae751.4c4bc8",
-                "75c03212.06f3cc"
+                "75c03212.06f3cc",
+                "37c022b5.8850de"
             ]
         ]
     },
@@ -1307,7 +1367,7 @@
         "tosidebar": true,
         "console": false,
         "tostatus": false,
-        "complete": "payload",
+        "complete": "true",
         "x": 970,
         "y": 320,
         "wires": []
@@ -1385,7 +1445,7 @@
         "type": "function",
         "z": "19b79c31.71fc04",
         "name": "pushbulletmsg",
-        "func": "var msgout = {};\nvar date, ToD;\nvar msg_intervall = 1800000 //30 min\ndate = new Date();\nToD = date.getHours();\n\n//value 1 means door closed\nif (msg.payload[0].value == 1) return null;\n\n//when was the last warning message sent\nvar last_garagedoor_sent=flow.get('last_garagedoor_sent') || 0;\nvar last_backdoor_sent=flow.get('last_backdoor_sent') || 0;\n\nmsgout.headers = {};\nmsgout.headers['Content-Type'] = 'application/json';\nmsgout.headers['Access-Token'] = 'o.fFQGFv7AOZcDGIvrvukiaWMMxIV9fKxc';\n\n//only send messages at night\nif ((ToD > 5) && (ToD < 20)) return null;\nnode.warn (\"Time of Day: \" + ToD + \", sending message\");\n\n// only if last message was sent more than msg_interval (e.g. 30) mins before,\n// update the corresponding values in the flow\n// and actually send message\nif (msg.payload[1].location.indexOf(\"garage_front\") > -1){\n    var diff = Date.now() - last_garagedoor_sent;\n    if (diff < msg_intervall) return null;\n    msgout.payload = '{\"body\":\"Das Garagentor steht offen!\",\"title\":\"Türalarm\",\"type\":\"note\"}';\n    flow.set('last_garagedoor_sent', Date.now());\n}\n\nif (msg.payload[1].location.indexOf(\"garage_back\") > -1){\n    msgout.payload= '{\"body\":\"Die Garagentür steht offen!\",\"title\":\"Türalarm\",\"type\":\"note\"}';\n    var diff = Date.now() - last_backdoor_sent;\n//    if (diff < msg_intervall) return null;\n    flow.set('last_backdoor_sent',Date.now());\n}\n\n\nreturn msgout;",
+        "func": "var msgout = {};\nvar date, ToD;\nvar msg_intervall = 1800000 //30 min\ndate = new Date();\n\n// timestamp when the last message was received\n// used by watchdog\nflow.set('lastmessage', Date.now())\n\nToD = date.getHours();\n\n//value 1 means door closed\nif (msg.payload[0].value == 1) return null;\n\n//when was the last warning message sent\nvar last_garagedoor_sent=flow.get('last_garagedoor_sent') || 0;\nvar last_backdoor_sent=flow.get('last_backdoor_sent') || 0;\n\nmsgout.headers = {};\nmsgout.headers['Content-Type'] = 'application/json';\nmsgout.headers['Access-Token'] = 'o.fFQGFv7AOZcDGIvrvukiaWMMxIV9fKxc';\n\n//only send messages at night\nif ((ToD > 5) && (ToD < 20)) return null;\nnode.warn (\"Time of Day: \" + ToD + \", sending message\");\n\n// only if last message was sent more than msg_interval (e.g. 30) mins before,\n// update the corresponding values in the flow\n// and actually send message\nif (msg.payload[1].location.indexOf(\"garage_front\") > -1){\n    var diff = Date.now() - last_garagedoor_sent;\n    if (diff < msg_intervall) return null;\n    msgout.payload = '{\"body\":\"Das Garagentor steht offen!\",\"title\":\"Türalarm\",\"type\":\"note\"}';\n    flow.set('last_garagedoor_sent', Date.now());\n}\n\nif (msg.payload[1].location.indexOf(\"garage_back\") > -1){\n    msgout.payload= '{\"body\":\"Die Garagentür steht offen!\",\"title\":\"Türalarm\",\"type\":\"note\"}';\n    var diff = Date.now() - last_backdoor_sent;\n//    if (diff < msg_intervall) return null;\n    flow.set('last_backdoor_sent',Date.now());\n}\n\n\nreturn msgout;",
         "outputs": 1,
         "noerr": 0,
         "x": 780,
@@ -1493,7 +1553,7 @@
         "type": "function",
         "z": "c730f8f3.d5cf18",
         "name": "uptime",
-        "func": "//node.warn(msg);\n\nmsg_json= JSON.parse(msg.payload);\n//node.warn(msg_json);\n\nmsgout = {};\n\n\nvar topicarr = msg.topic.split('/');\nvar sensor = \"\";\nvar uptime = 0;\nvar vcc = msg_json.Vcc;\nvar rssi = msg_json.Wifi.RSSI;\n\n\ntopicarr.forEach(function(element){\n   if (element.indexOf('sonoff') > -1) {\n       sensor=element;\n   }\n});\n\n//convert uptime into seconds\n\nuptimearr = msg_json.Uptime.split('T');\nuptime_d = uptimearr[0]*24*3600;\nuptime_h = uptimearr[1].split(':')[0]*3600;\nuptime_m = uptimearr[1].split(':')[1]*60;\nuptime = uptime_d+uptime_h+uptime_m+uptimearr[1].split(':')[2];\n\n\nmsgout = {payload: [{\n        \"value\": uptime\n    },\n    {\n        \"sensor\": sensor,\n    }]\n}; \nmsgout.measurement = \"uptime\"\nnode.send(msgout);\n\nmsgout.measurement = \"vcc\";\nmsgout.payload[0].value=vcc;\nnode.send(msgout);\n\nmsgout.measurement = \"rssi\";\nmsgout.payload[0].value=rssi;\n\n\nreturn msgout;",
+        "func": "//node.warn(msg);\n\nmsg_json= JSON.parse(msg.payload);\n//node.warn(msg_json);\n\nmsgout = {};\n\n\nvar topicarr = msg.topic.split('/');\nvar sensor = \"\";\nvar uptime = 0;\nvar vcc = msg_json.Vcc;\nvar rssi = msg_json.Wifi.RSSI;\n\n\ntopicarr.forEach(function(element){\n   if (element.indexOf('sonoff') > -1) {\n       sensor=element;\n   }\n});\n\n//convert uptime into seconds\n\nuptimearr = msg_json.Uptime.split('T');\nuptimearr_hms = uptimearr[1].split(':');\nuptime_d = parseInt(uptimearr[0])*24*3600;\nuptime_h = parseInt(uptimearr_hms[0])*3600;\nuptime_m = parseInt(uptimearr_hms[1])*60;\nuptime = uptime_d+uptime_h+uptime_m+parseInt(uptimearr_hms[2],10);\nuptimestr = uptime.toString();\n\nmsgout = {payload: [{\n        \"value\": uptimestr\n    },\n    {\n        \"sensor\": sensor,\n    }]\n}; \nmsgout.measurement = \"uptime\"\nnode.send(msgout);\n\nmsgout.measurement = \"vcc\";\nmsgout.payload[0].value=vcc;\nnode.send(msgout);\n\nmsgout.measurement = \"rssi\";\nmsgout.payload[0].value=rssi;\n\n\nreturn msgout;",
         "outputs": 1,
         "noerr": 0,
         "x": 400,
@@ -1502,6 +1562,146 @@
             [
                 "3e252da.173b6d2",
                 "bcbb5637.4cf2c8"
+            ]
+        ]
+    },
+    {
+        "id": "363ee668.1156da",
+        "type": "mqtt out",
+        "z": "669dd5db.17cc1c",
+        "name": "com.bosch_si.alf5koe:my-device-id-4712",
+        "topic": "telemetry/t6870db2266c84e09986c107c9f16127d_hub/com.bosch_si.alf5koe:my-device-id-4712",
+        "qos": "",
+        "retain": "",
+        "broker": "4fdefebd.4598c",
+        "x": 560,
+        "y": 80,
+        "wires": []
+    },
+    {
+        "id": "256858b3.0537a8",
+        "type": "function",
+        "z": "669dd5db.17cc1c",
+        "name": "",
+        "func": "pl='{\"topic\": \"com.bosch_si.alf5koe/my-device-id-4712/things/twin/commands/modify\",\"headers\": {\"response-required\": false},\"path\": \"/features/barometricpressure/properties\",\"value\" : {\"status\" : {\"value\": {\"currentMeasured\": 2999, \"minMeasured\": 900, \"maxMeasured\": 1100}}, \"configuration\" : {\"seaLevel\": 0} } }'\n\nmsg.payload = pl;\nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "x": 280,
+        "y": 120,
+        "wires": [
+            [
+                "363ee668.1156da",
+                "be883b5b.fe9018"
+            ]
+        ]
+    },
+    {
+        "id": "be883b5b.fe9018",
+        "type": "debug",
+        "z": "669dd5db.17cc1c",
+        "name": "",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "false",
+        "x": 520,
+        "y": 240,
+        "wires": []
+    },
+    {
+        "id": "e6d038fa.795d58",
+        "type": "inject",
+        "z": "669dd5db.17cc1c",
+        "name": "",
+        "topic": "",
+        "payload": "",
+        "payloadType": "date",
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "x": 120,
+        "y": 140,
+        "wires": [
+            [
+                "256858b3.0537a8"
+            ]
+        ]
+    },
+    {
+        "id": "88a954b1.38e998",
+        "type": "function",
+        "z": "1db65893.9f8c27",
+        "name": "toIoTHub",
+        "func": "\n\n\nvar location, source, msgout;\nvar temp_correction=0;\nvar temp = 0.0;\n\n// Configure here where each Sensor is located and which Sensor module it uses\nstudio_mac = \"755A36\" //\nkeller_mac = \"B3BC39\" //84f3ebb3bc39\n\nif (msg.topic.indexOf(studio_mac) > -1 ){\n    location = \"Studio\"\n    source = \"BME280\"\n    mac = studio_mac\n}\n\nif (msg.topic.indexOf(keller_mac) > -1 ){\n //   location = \"Keller\"\n //   source = \"BME280\"\n //   mac = keller_mac\n //   temp_correction=-4.0;\n return;\n}\n\n\n//{\n//  \"Time\":\"2018-11-27T22:17:04\",\n//  \"BME280\":{\n//       \"Temperature\":23.7,\n//       \"Humidity\":31.2,\n//       \"Pressure\":1016.8\n//   },\n//   \"TempUnit\":\"C\"\n//}\n\n// split the payload into separate messages to pipe into influx\n\n    msgout= {payload: {\n        \"topic\": \"com.bosch_si.alf5koe/my-device-id-4712/things/twin/commands/modify\",\n        \"headers\": {\"response-required\": false},\n        \"path\": \"/features/barometricpressure/properties\",\n        \"value\" : {\n            \"status\" : {\n                \"value\": {\n                    \"currentMeasured\": msg.payload.BME280.Pressure,\n                    \"minMeasured\": 900,\n                    \"maxMeasured\": 1100\n                }\n            },\n            \"configuration\" : {\n                \"seaLevel\": 0\n            } \n        }\n    }};\n    \nnode.send (msgout);\ntemp = msg.payload.BME280.Temperature + temp_correction;\nmsgout.payload.path= \"/features/temperature/properties\"\nmsgout.payload.value.status.value.currentMeasured=temp\nnode.send (msgout);\n\nreturn msgout;    \n    \n//////////////////////////////////////////////////////////////7\n\nmsgout = {payload: [{\n        \"value\": temp\n    },\n    {\n        \"location\": location,\n        \"source\": source,\n        \"mac\": mac,\n        \"unit\": \"C\"\n    }]}; \n\nnode.send ( [msgout, null, null, null]);\n\nmsgout.payload[0].value = msg.payload.BME280.Humidity\nmsgout.payload[1].unit = \"%\"\nnode.send ( [null, msgout, null, null]);\n\nmsgout.payload[0].value = msg.payload.BME280.Pressure\nmsgout.payload[1].unit = \"hPa\"\nnode.send ( [null, null, msgout, null]);\n\n//dewpoint calculation from http://www.meteo.psu.edu/~jyh10/classes/meteo473/java-tdew.htm\ntem2 = msg.payload.BME280.Temperature;\nr = msg.payload.BME280.Humidity;\ntem = -1.0*tem2;\nes = 6.112*Math.exp(-1.0*17.67*tem/(243.5 - tem));\ned = r/100.0*es;\neln = Math.log(ed/6.112);\ntd = -243.5*eln/(eln - 17.67 );\n// rounding from https://gordonlesti.com/inaccurate-rounding-with-decimal-digits/\ndewpoint = Math.round( Math.round( td * 1000 ) / 10 ) / 100;\n\nmsgout.payload[0].value = dewpoint\nmsgout.payload[1].unit = \"C\"\nnode.send ( [null, null, null, msgout]);\n\n\n\n\n\nvar location, source, msgout;\n\n// Configure here where each Sensor is located and which Sensor module it uses\n\nif (msg.topic.indexOf(\"sensor/600194755a36\") > -1 ){\n    location = \"Studio\"\n    source = \"BME280\"\n}\n\nif (msg.topic.indexOf(\"sensor/84f3ebb3bc39\") > -1 ){\n//    location = \"Keller\"\n//    source = \"BME280\"\n    return;\n}\nif (msg.topic.indexOf(\"hectoPascal\") > -1) {\n    msgout= {payload: {\n        \"topic\": \"com.bosch_si.alf5koe/my-device-id-4712/things/twin/commands/modify\",\n        \"headers\": {\"response-required\": false},\n        \"path\": \"/features/barometricpressure/properties\",\n        \"value\" : {\n            \"status\" : {\n                \"value\": {\n                    \"currentMeasured\": parseFloat(msg.payload),\n                    \"minMeasured\": 900,\n                    \"maxMeasured\": 1100\n                }\n            },\n            \"configuration\" : {\n                \"seaLevel\": 0\n            } \n        }\n    }};\n}\n\nreturn msgout;\n\n////////////////////////////\n\nif (msg.topic.indexOf(\"dewPoint\") > -1 ) {\n    msgout.payload[1].unit =\"Celsius\";\n    node.send ( [msgout, null, null, null]);\n}\n\nif (msg.topic.indexOf(\"percentRelative\") > -1 ) {\n    msgout.payload[1].unit =\"%\";\n    node.send ( [null, msgout, null, null]);\n}\n\n\nif (msg.topic.indexOf(\"degreeCelsius\") > -1 ) {\n    msgout.payload[1].unit =\"Celsius\";\n    node.send ( [null, null, null, msgout]);\n}\n",
+        "outputs": 1,
+        "noerr": 0,
+        "x": 500,
+        "y": 500,
+        "wires": [
+            [
+                "87b631eb.ead38",
+                "faa618b8.66df98"
+            ]
+        ]
+    },
+    {
+        "id": "faa618b8.66df98",
+        "type": "debug",
+        "z": "1db65893.9f8c27",
+        "name": "",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "false",
+        "x": 670,
+        "y": 460,
+        "wires": []
+    },
+    {
+        "id": "87b631eb.ead38",
+        "type": "mqtt out",
+        "z": "1db65893.9f8c27",
+        "name": "com.bosch_si.alf5koe:my-device-id-4712",
+        "topic": "telemetry/t6870db2266c84e09986c107c9f16127d_hub/com.bosch_si.alf5koe:my-device-id-4712",
+        "qos": "",
+        "retain": "",
+        "broker": "4fdefebd.4598c",
+        "x": 770,
+        "y": 500,
+        "wires": []
+    },
+    {
+        "id": "c7b20f5e.d4334",
+        "type": "function",
+        "z": "1db65893.9f8c27",
+        "name": "dewptcompare",
+        "func": "var msgout={}\nmsgout.payload={}\n\n//only run for values from Keller\nif (msg.payload[1].location.indexOf(\"Keller\") < 0)\n  return;\n\nvar METAR_dew = global.get('METAR_dew')||0;\nvar dew = msg.payload[0].value\n\n// windowstate 0 = closed\n// windowstate 1 = open\nvar windowstate = flow.get('windowstate')||0;\nvar newwindowstate=0;\n\n// we want a low dewpt inside (little moisture in the air)\n// so if the dewpoint inside becomes higher than the outside dewpt, we need to open the window\n// if the dewpoint inside becomes lower than the outside dewpt, we need to close the window\n// if the inside temp drops below 15°C, we need to close the window anyway\n\nif (METAR_dew <= dew){\n  newwindowstate = 1\n  node.warn(\"window needs to be in OPEN state\")\n  msgout.payload.action=\"OPEN the window\"\n}\nelse\n{\n  newwindowstate = 0\n  node.warn(\"window needs to be in CLOSED state\")\n  msgout.payload.action=\"Close the window\"\n}\n\nif (newwindowstate != windowstate){\n  windowstate = newwindowstate;\n  flow.set('windowstate',windowstate)\n  node.warn(\"windowstate needs to be changed\")\n  node.send(msgout)\n}\n\nreturn;",
+        "outputs": 1,
+        "noerr": 0,
+        "x": 1000,
+        "y": 100,
+        "wires": [
+            [
+                "ec82d2fe.6da9a"
+            ]
+        ]
+    },
+    {
+        "id": "ec82d2fe.6da9a",
+        "type": "function",
+        "z": "1db65893.9f8c27",
+        "name": "writemessage",
+        "func": "\n//\"body\":\"No door status received for a while!\",\nvar action = msg.payload.action\nnode.warn(\"Action: \"+action)\nvar msgout = {}\nmsgout.payload = {}\n//msgout = {payload: '{\"title\":\"ACTION Required\",\"type\":\"note\"}'};\nmsgout.payload.title=\"ACTION Required\"\nmsgout.payload.type=\"note\"\nmsgout.payload.body = action;\nmsgout.headers = {};\nmsgout.headers['Content-Type'] = 'application/json';\nmsgout.headers['Access-Token'] = 'o.Od8HFYCakNIZPTvPUByeiRl1sa43Tjs4';\n\nreturn msgout;",
+        "outputs": 1,
+        "noerr": 0,
+        "x": 1000,
+        "y": 140,
+        "wires": [
+            [
+                "d9b7a1c5.1182b"
             ]
         ]
     }

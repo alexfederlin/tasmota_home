@@ -117,7 +117,7 @@ def on_message(client, userdata, msg):
 client = mqtt.Client()
 client.on_connect = on_connect
 client.on_message = on_message
-client.username_pw_set("root", "uoF9LTdyDkgnV2qqPtPI")
+client.username_pw_set("root", "xxx")
 client.tls_set(ca_certs="ca.crt.pem", certfile=None, keyfile=None, cert_reqs=ssl.CERT_REQUIRED,
     tls_version=ssl.PROTOCOL_TLSv1_1, ciphers=None)
 client.tls_insecure_set(True)
